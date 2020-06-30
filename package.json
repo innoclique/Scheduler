@@ -1,0 +1,30 @@
+{
+  "name": "scheduler",
+  "version": "1.0.0",
+  "description": "A task scheduler",
+  "main": "scheduler.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "watch": "node scheduler.js",
+    "start": "node scheduler.js",
+    "build": "node scheduler.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/innoclique/Scheduler.git"
+  },
+  "keywords": [
+    "scheduler",
+    "node"
+  ],
+  "author": "ksamba@innoclique.com",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/innoclique/Scheduler/issues"
+  },
+  "homepage": "https://github.com/innoclique/Scheduler#readme",
+  "dependencies": {
+    "express": "^4.17.1",
+    "node-cron": "^2.0.3"
+  }
+}
