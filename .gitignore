@@ -46,3 +46,5 @@ client/.vs/slnx.sqlite
 .vs/config/applicationhost.config
 client/.vs/VSWorkspaceState.json
 assets/**/images/*
+
+config/**/*
