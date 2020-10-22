@@ -22,7 +22,7 @@ console.log('smtpConfig',smtpConfig)
 let transporter = nodemailer.createTransport(smtpConfig);
 
 exports.GetMailObject = function (to, subject, html, cc, bcc) {
-console.log('getmailobj')
+console.log('getmailobj',{ to,subject,html})
     function MailException(message) {
         this.message = message;
         this.name = 'MailException';

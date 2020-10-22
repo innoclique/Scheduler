@@ -2,7 +2,15 @@
 var mongoose = require("mongoose");
 require('./model/User')
 require('./model/Packages')
+const Mongoose = require("mongoose");
+var fs = require("fs");
+const EvaluationRepo = require('./model/Evalution');
+const DeliverEmailRepo = require('./model/DeliverEmail');
+const UserRepo = require('./model/UserSchema');
 var SendMail = require("./helpers/mail.js");
+var env = process.env.NODE_ENV || 'dev';
+var config = require('./config/' + env + '.config');
+
 var task = function () {
 
 }
@@ -22,7 +30,6 @@ task.GetPackageExpiredUsers = async function () {
     var date = new Date();
     var last3Days = date.setDate(date.getDate() + 3)
     var expiredList = await package.find(({ expireat: { $lte: new Date() } }));
-    // var expiredList= await User.find({'packageId.expireat':{$lte:new Date()}});
     var usersList = [];
 
 
@@ -51,5 +58,40 @@ task.GetPackageExpiredUsers = async function () {
 
 
 
+}
+task.NotifyEvaluationToEmployees = async () => {
+    console.log('came into email send functionality')
+    var list = await DeliverEmailRepo.find({ IsDelivered: false,Email:{$ne:null} })
+        .populate('User._id')
+        .sort({ CreatedOn: -1 })
+        console.log('count',list.length)
+    for (let index = 0; index < list.length; index++) {
+        const element = list[index];
+const _user=await UserRepo.findOne({_id:mongoose.Types.ObjectId(element.User)})
+        // var generatedlink =
+        //         config.APP_BASE_URL + "auth/VerifiedEmail/" + Linkresult._id.toString();
+            fs.readFile(__dirname + "/EmailTemplates/EvaluationForEmployee.html", function read(
+                err,
+                bufcontent
+            ) {
+                var content = bufcontent.toString();
+                content = content.replace("##FirstName##", _user.FirstName);
+                content = content.replace("##ProductName##", config.ProductName);
+                
+                var mailObject = SendMail.GetMailObject(
+                    element.Email,
+                    element.Subject,
+                    content,
+                    null,null
+                );
+               // console.log('mail',mailObject);
+                SendMail.sendEmail(mailObject, async function (res) {
+                    console.log(res);
+                    await DeliverEmailRepo.update({_id:element._id},{IsDelivered:true})
+                });
+        
+            });
+       
+    }
 }
 module.exports = task;
