@@ -17,7 +17,9 @@ console.log(env);
 cron.schedule("* * * * *",async () => {  
  // var ff=await task.GetUserCount();
   //var expi=await task.GetPackageExpiredUsers()
-  var gg=await task.NotifyEvaluationToEmployees();
+  //var gg=await task.NotifyEvaluationToEmployees();
+  var ff=await task.FindAboutToExpireCompanies();
+  console.log('ffff',ff);
   // console.log('expi',expi)
   // console.log('total users count',ff)
   console.log(`this message logs every minute`);

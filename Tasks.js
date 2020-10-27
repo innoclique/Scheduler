@@ -7,6 +7,7 @@ var fs = require("fs");
 const EvaluationRepo = require('./model/Evalution');
 const DeliverEmailRepo = require('./model/DeliverEmail');
 const UserRepo = require('./model/UserSchema');
+const OrganizationRepo = require('./model/OrganizationSchema');
 var SendMail = require("./helpers/mail.js");
 var env = process.env.NODE_ENV || 'dev';
 var config = require('./config/' + env + '.config');
@@ -31,7 +32,6 @@ task.GetPackageExpiredUsers = async function () {
     var last3Days = date.setDate(date.getDate() + 3)
     var expiredList = await package.find(({ expireat: { $lte: new Date() } }));
     var usersList = [];
-
 
     // console.log('element',element)
     for (let index = 0; index < expiredList.length; index++) {
@@ -61,37 +61,78 @@ task.GetPackageExpiredUsers = async function () {
 }
 task.NotifyEvaluationToEmployees = async () => {
     console.log('came into email send functionality')
-    var list = await DeliverEmailRepo.find({ IsDelivered: false,Email:{$ne:null} })
+    var list = await DeliverEmailRepo.find({ IsDelivered: false, Email: { $ne: null } })
         .populate('User._id')
         .sort({ CreatedOn: -1 })
-        console.log('count',list.length)
+    console.log('count', list.length)
     for (let index = 0; index < list.length; index++) {
         const element = list[index];
-const _user=await UserRepo.findOne({_id:mongoose.Types.ObjectId(element.User)})
+        const _user = await UserRepo.findOne({ _id: mongoose.Types.ObjectId(element.User) })
         // var generatedlink =
         //         config.APP_BASE_URL + "auth/VerifiedEmail/" + Linkresult._id.toString();
-            fs.readFile(__dirname + "/EmailTemplates/EvaluationForEmployee.html", function read(
-                err,
-                bufcontent
-            ) {
-                var content = bufcontent.toString();
-                content = content.replace("##FirstName##", _user.FirstName);
-                content = content.replace("##ProductName##", config.ProductName);
-                
-                var mailObject = SendMail.GetMailObject(
-                    element.Email,
-                    element.Subject,
-                    content,
-                    null,null
-                );
-               // console.log('mail',mailObject);
-                SendMail.sendEmail(mailObject, async function (res) {
-                    console.log(res);
-                    await DeliverEmailRepo.update({_id:element._id},{IsDelivered:true})
-                });
-        
+        fs.readFile(__dirname + "/EmailTemplates/EvaluationForEmployee.html", function read(
+            err,
+            bufcontent
+        ) {
+            var content = bufcontent.toString();
+            content = content.replace("##FirstName##", _user.FirstName);
+            content = content.replace("##ProductName##", config.ProductName);
+
+            var mailObject = SendMail.GetMailObject(
+                element.Email,
+                element.Subject,
+                content,
+                null, null
+            );
+            // console.log('mail',mailObject);
+            SendMail.sendEmail(mailObject, async function (res) {
+                console.log(res);
+                await DeliverEmailRepo.update({ _id: element._id }, { IsDelivered: true })
             });
-       
+
+        });
+
     }
+}
+task.FindAboutToExpireCompanies = async () => {
+    var q30=await OrganizationRepo.aggregate([
+        { 
+            "$redact": {
+            "$cond": {
+                "if": {
+                    "$lt": [
+                        { "$subtract": [  "$LicenseExpireOn",new Date() ] },
+                        1000 * 60 * 60 * 24*30
+                    ]
+                },
+                "then": "$$KEEP",
+                "else": "$$PRUNE"
+            }
+        }},
+        {
+        $project: {
+            Name: 1,
+            Email:1,
+            _id:1
+        }
+    }
+    ])
+    //console.table(q30);
+ 
+  //  console.table(companyList)
+    var _f=[];
+    for (let index = 0; index < q30.length; index++) {
+        const element = q30[index];
+        var _de=await DeliverEmailRepo.findOne({Queue:'Q30',Company:element._id})
+        /**_de is null means no record got inserted for that company for the Q30 Days */
+        if(_de===null){
+            _f.push({Email:element.Email,Model:'Organization',User:element._id,Company:element._id, Queue:'Q30',IsDelivered:false,Subject:"License will expire with in 30 days"})
+        }
+    }
+    var _result=await DeliverEmailRepo.insertMany(_f);
+    
+
+   
+
 }
 module.exports = task;

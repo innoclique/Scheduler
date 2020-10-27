@@ -14,7 +14,9 @@ const DeliverEmailSchema = new mongoose.Schema({
     CreatedOn: { type: Date, default: Date() },
     CreatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     UpdatedOn: { type: Date, default: Date() },
-    UpdatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null }
+    UpdatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    Model:{ type: String },
+    Queue:{ type: String }
 });
 
 DeliverEmailSchema.set('toJSON', { versionKey: false });
