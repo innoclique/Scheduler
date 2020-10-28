@@ -14,14 +14,23 @@ var task=require('./Tasks');
 console.log(config);
 console.log(env);
 
+// cron.schedule("* * * * *",async () => {  
+//  // var ff=await task.GetUserCount();
+//   //var expi=await task.GetPackageExpiredUsers()
+//   var gg=await task.NotifyEvaluationToEmployees();
+//   // console.log('expi',expi)
+//   // console.log('total users count',ff)
+//   console.log(`this message logs every minute`);
+// });
+//0 23 * * *
 cron.schedule("* * * * *",async () => {  
- // var ff=await task.GetUserCount();
-  //var expi=await task.GetPackageExpiredUsers()
-  var gg=await task.NotifyEvaluationToEmployees();
-  // console.log('expi',expi)
-  // console.log('total users count',ff)
-  console.log(`this message logs every minute`);
-});
+    // var ff=await task.GetUserCount();
+     //var expi=await task.GetPackageExpiredUsers()
+     var gg=await task.NotifyToCSAOnLicenseExpiry();
+     // console.log('expi',expi)
+     // console.log('total users count',ff)
+     console.log(`this message logs every minute`);
+   });
 mongoose.Promise = global.Promise;
 var mongoPromise = mongoose.connect(config.database, {
     

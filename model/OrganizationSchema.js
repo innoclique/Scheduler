@@ -48,4 +48,4 @@ const OrganizationSchema = new mongoose.Schema({
 
 OrganizationSchema.set('toJSON', { versionKey: false });
 
-module.exports = mongoose.model("Organization", OrganizationSchema);
+module.exports = mongoose.model("organizations", OrganizationSchema);
