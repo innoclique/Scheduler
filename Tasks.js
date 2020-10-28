@@ -8,6 +8,7 @@ const EvaluationRepo = require('./model/Evalution');
 const DeliverEmailRepo = require('./model/DeliverEmail');
 const UserRepo = require('./model/UserSchema');
 const OrganizationRepo = require('./model/OrganizationSchema')
+
 var SendMail = require("./helpers/mail.js");
 var env = process.env.NODE_ENV || 'dev';
 var config = require('./config/' + env + '.config');
@@ -32,7 +33,6 @@ task.GetPackageExpiredUsers = async function () {
     var last3Days = date.setDate(date.getDate() + 3)
     var expiredList = await package.find(({ expireat: { $lte: new Date() } }));
     var usersList = [];
-
 
     // console.log('element',element)
     for (let index = 0; index < expiredList.length; index++) {
@@ -247,5 +247,46 @@ iteration=1;
         });
 
     }
+}
+task.FindAboutToExpireCompanies = async () => {
+    var q30=await OrganizationRepo.aggregate([
+        { 
+            "$redact": {
+            "$cond": {
+                "if": {
+                    "$lt": [
+                        { "$subtract": [  "$LicenseExpireOn",new Date() ] },
+                        1000 * 60 * 60 * 24*30
+                    ]
+                },
+                "then": "$$KEEP",
+                "else": "$$PRUNE"
+            }
+        }},
+        {
+        $project: {
+            Name: 1,
+            Email:1,
+            _id:1
+        }
+    }
+    ])
+    //console.table(q30);
+ 
+  //  console.table(companyList)
+    var _f=[];
+    for (let index = 0; index < q30.length; index++) {
+        const element = q30[index];
+        var _de=await DeliverEmailRepo.findOne({Queue:'Q30',Company:element._id})
+        /**_de is null means no record got inserted for that company for the Q30 Days */
+        if(_de===null){
+            _f.push({Email:element.Email,Model:'Organization',User:element._id,Company:element._id, Queue:'Q30',IsDelivered:false,Subject:"License will expire with in 30 days"})
+        }
+    }
+    var _result=await DeliverEmailRepo.insertMany(_f);
+    
+
+   
+
 }
 module.exports = task;

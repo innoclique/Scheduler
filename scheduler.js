@@ -31,6 +31,15 @@ cron.schedule("* * * * *",async () => {
      // console.log('total users count',ff)
      console.log(`this message logs every minute`);
    });
+ // var ff=await task.GetUserCount();
+  //var expi=await task.GetPackageExpiredUsers()
+  //var gg=await task.NotifyEvaluationToEmployees();
+  var ff=await task.FindAboutToExpireCompanies();
+  console.log('ffff',ff);
+  // console.log('expi',expi)
+  // console.log('total users count',ff)
+  console.log(`this message logs every minute`);
+});
 mongoose.Promise = global.Promise;
 var mongoPromise = mongoose.connect(config.database, {
     
