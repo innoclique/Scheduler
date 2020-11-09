@@ -7,7 +7,9 @@ var fs = require("fs");
 const EvaluationRepo = require('./model/Evalution');
 const DeliverEmailRepo = require('./model/DeliverEmail');
 const UserRepo = require('./model/UserSchema');
-const OrganizationRepo = require('./model/OrganizationSchema')
+const OrganizationRepo = require('./model/OrganizationSchema');
+const subscriptionSchema = require('./model/Subscriptions');
+const moment = require('moment');
 
 var SendMail = require("./helpers/mail.js");
 var env = process.env.NODE_ENV || 'dev';
@@ -289,4 +291,188 @@ task.FindAboutToExpireCompanies = async () => {
    
 
 }
+
+//Task to find all expaired subscription email
+task.findExpaireSubscription = async () => {
+    let whereObj = {} ;
+    let psaUser;
+    //whereObj['type']="monthly";
+    whereObj['nextPaymentDate']={"$lte":moment()};
+
+    console.log(JSON.stringify(whereObj,null,5));
+    let scubScriptionsList = await subscriptionSchema.find(whereObj).populate("orgnizationId");
+    if(scubScriptionsList.length>0){
+        psaUser = await UserRepo.findOne({Role:'PSA'});
+    }
+    scubScriptionsList.forEach(subscription => {
+        //console.log(JSON.stringify(subscription,null,5));
+        let {orgnizationId} = subscription;
+        fs.readFile(__dirname + "/EmailTemplates/RenewalSubscription.html", function read(
+            err,
+            bufcontent
+        ) {
+            var content = bufcontent.toString();
+            content = content.replace("##FirstName##", orgnizationId.Name);
+            content = content.replace("##TYPE##", subscription.type);
+            content = content.replace("##ProductName##", config.ProductName);
+            let toEmailArray = [];
+            toEmailArray.push(orgnizationId.Email);
+            toEmailArray.push(psaUser.Email);
+            console.log(`sending email to ${JSON.stringify(toEmailArray)}`);
+            var mailObject = SendMail.GetMailObject(
+                toEmailArray,
+                "Renewal Email",
+                content,
+                null, null
+            );
+            // console.log('mail',mailObject);
+            SendMail.sendEmail(mailObject, async function (res) {
+                console.log(res);
+                await DeliverEmailRepo.update({ _id: subscription._id }, { IsDelivered: true })
+            });
+        });
+    });
+
+    //console.log(JSON.stringify(scubScriptionsList,null,5));
+}
+
+
+task.findSubscriptionsForPaymentRemainder = async () => {
+    console.log("inside:findSubscriptionsForPaymentRemainder");
+    let currentMoment = moment();
+    let whereObj = {} ;
+    whereObj['nextPaymentDate']={"$gt":currentMoment};
+    console.log(whereObj)
+    let scubScriptionsList = await subscriptionSchema.find(whereObj).populate("orgnizationId");
+    console.log(scubScriptionsList.length)
+    scubScriptionsList.forEach(subscription => {
+        //console.log(JSON.stringify(subscription,null,5));
+        let {orgnizationId,nextPaymentDate} = subscription;
+        let dueMoment = moment(nextPaymentDate);
+        var diffDays = dueMoment.diff(currentMoment, 'days');
+        console.log(`dueMoment = > ${dueMoment}`);
+        console.log(`currentMoment = > ${currentMoment}`);
+        console.log(`days = > ${diffDays}`);
+        if(diffDays === 7 || diffDays ===3){
+            fs.readFile(__dirname + "/EmailTemplates/PaymentRemainder.html", function read(
+                err,
+                bufcontent
+            ) {
+                var content = bufcontent.toString();
+                content = content.replace("##FirstName##", orgnizationId.Name);
+                content = content.replace("##DAYS##", diffDays);
+                content = content.replace("##DUEDATE##", nextPaymentDate);
+                let toEmailArray = [];
+                toEmailArray.push(orgnizationId.Email);
+                console.log(`sending email to ${JSON.stringify(toEmailArray)}`);
+                var mailObject = SendMail.GetMailObject(
+                    toEmailArray,
+                    "Renewal Email",
+                    content,
+                    null, null
+                );
+                // console.log('mail',mailObject);
+                SendMail.sendEmail(mailObject, async function (res) {
+                    console.log(res);
+                    await DeliverEmailRepo.update({ _id: subscription._id }, { IsDelivered: true })
+                });
+            });
+        }
+
+        /**/
+    });
+
+    //console.log(JSON.stringify(scubScriptionsList,null,5));
+}
+
+task.findPaymentRemainderToPSA_CSA_EA = async () => {
+    console.log("inside:findSubscriptionsForPaymentRemainder");
+    let toEmailArray = [];
+    let currentMoment = moment();
+
+    let psaUser = await UserRepo.findOne({Role:'PSA'});
+    let eaUser = await UserRepo.findOne({Role:'EA'});
+    toEmailArray.push(psaUser.Email);
+    toEmailArray.push(eaUser.Email);
+
+    let scubScriptionsList = await subscriptionSchema.find().populate("orgnizationId");
+    scubScriptionsList.forEach(subscription => {
+        //console.log(JSON.stringify(subscription,null,5));
+        let {orgnizationId,nextPaymentDate} = subscription;
+        let dueMoment = moment(nextPaymentDate);
+        var diffDays = dueMoment.diff(currentMoment, 'days');
+        console.log(`dueMoment = > ${dueMoment}`);
+        console.log(`currentMoment = > ${currentMoment}`);
+        console.log(`days = > ${diffDays}`);
+        let emailNotify = false;
+        switch (diffDays) {
+            case 30:
+                emailNotify = true;
+                console.log("30 days")
+                break;
+            case 14:
+                console.log("14 days");
+                emailNotify = true;
+                break;
+            case 7:
+                console.log("7 days");
+                emailNotify = true;
+                break;
+            case 3:
+                console.log("3 days");
+                emailNotify = true;
+                break;
+            case 0:
+                console.log("3 days");
+                emailNotify = true;
+                break;
+            case -3:
+                console.log("3 days");
+                emailNotify = true;
+                break;
+            case -7:
+                console.log("3 days");
+                emailNotify = true;
+                break;
+            default:
+                break;
+        }
+        
+        if(emailNotify){
+            sendEmailNotification(diffDays,toEmailArray,subscription);
+        }
+        
+    });
+
+    //console.log(JSON.stringify(scubScriptionsList,null,5));
+}
+
+const sendEmailNotification = (diffDays,toEmailArray,subscription)=> {
+    let {orgnizationId,nextPaymentDate} = subscription;
+    fs.readFile(__dirname + "/EmailTemplates/DownloadRemainder.html", function read(
+        err,
+        bufcontent
+    ) {
+        var content = bufcontent.toString();
+        content = content.replace("##FirstName##", orgnizationId.Name);
+        content = content.replace("##DAYS##", diffDays);
+        content = content.replace("##DUEDATE##", nextPaymentDate);
+        
+        toEmailArray.push(orgnizationId.Email);
+        console.log(`sending email to ${JSON.stringify(toEmailArray)}`);
+        var mailObject = SendMail.GetMailObject(
+            toEmailArray,
+            "Renewal Email",
+            content,
+            null, null
+        );
+        // console.log('mail',mailObject);
+        SendMail.sendEmail(mailObject, async function (res) {
+            console.log(res);
+            await DeliverEmailRepo.update({ _id: subscription._id }, { IsDelivered: true })
+        });
+    });
+}
+
+
 module.exports = task;
