@@ -43,7 +43,9 @@ const OrganizationSchema = new mongoose.Schema({
     StartMonth:{type:String},
     EndMonth:{type:String},
     IsDraft:Boolean,
-    LicenseExpireOn:{type:Date,default: Date() }
+    LicenseExpireOn:{type:Date,default: Date() },
+    CoachingReminder:{ type: String },
+    LastReminded:{type:Date},
 });
 
 OrganizationSchema.set('toJSON', { versionKey: false });
