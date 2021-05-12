@@ -29,6 +29,6 @@
     "moment": "^2.29.1",
     "mongoose": "^5.9.20",
     "node-cron": "^2.0.3",
-    "nodemailer": "^6.4.10"
+    "nodemailer": "^6.4.16"
   }
 }
